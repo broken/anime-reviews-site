@@ -8,6 +8,7 @@ import {
   uploadCover,
   uploadThumbnail,
   signInWithGoogle,
+  auth,
   app,
 } from '../../src/services/firebase.js';
 
@@ -1698,16 +1699,20 @@ export class SarAuthorForm extends LitElement {
 
   async _onClick(event) {
     try {
-      let authInfo = null;
-      if (typeof signInWithGoogle === 'function') {
+      await auth.authStateReady();
+      let authInfo = auth.currentUser;
+
+      if (!authInfo) {
         authInfo = await signInWithGoogle();
-      } else if (this.$.auth?.signInWithPopup) {
-        authInfo = await this.$.auth.signInWithPopup('google');
       }
       await this._saveReview(authInfo);
     } catch (err) {
       console.warn('Authentication failed.', err);
-      this.showToast('Review could not be saved.');
+      if (err?.code === 'auth/popup-blocked') {
+        this.showToast('Sign-in popup was blocked by browser. Please allow popups.');
+      } else {
+        this.showToast(`Review could not be saved: ${err?.message || 'Authentication failed'}`);
+      }
     }
   }
 
